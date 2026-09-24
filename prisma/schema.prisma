@@ -1,0 +1,63 @@
+// Skema database Golden Donate Cash
+// Dev: SQLite (gampang, tanpa setup). Production: ganti provider ke "postgresql"
+// dan DATABASE_URL ke koneksi Postgres (mis. dari Supabase / Neon / Railway).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  discordId   String   @unique
+  name        String
+  avatar      String?
+  isSuperOwner Boolean @default(false)
+  createdAt   DateTime @default(now())
+  workspaces  Workspace[]
+}
+
+model Workspace {
+  id         String    @id @default(cuid())
+  name       String
+  slot       Int       @default(1)
+  archived   Boolean   @default(false)
+  apiKey     String    @unique
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id])
+  providers  Provider[]
+  donations  Donation[]
+  createdAt  DateTime  @default(now())
+}
+
+// Satu baris per integrasi (Saweria / Bagi-Bagi / Sociabuzz) per workspace
+model Provider {
+  id          String   @id @default(cuid())
+  type        String   // "saweria" | "bagibagi" | "sociabuzz"
+  enabled     Boolean  @default(false)
+  webhookToken String  @unique @default(cuid())
+  streamKey   String?  // khusus Saweria
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, type])
+}
+
+model Donation {
+  id          String    @id @default(cuid())
+  donorName   String
+  amount      Int
+  message     String?
+  provider    String
+  status      String    @default("pending") // pending | claimed
+  leaseToken  String?   // dipegang Roblox selama diproses, dilepas kalau ack gagal
+  leaseExpiresAt DateTime?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime  @default(now())
+  claimedAt   DateTime?
+}
