@@ -1,4 +1,4 @@
-# Golden Donate Cash
+<img width="1920" height="1015" alt="image" src="https://github.com/user-attachments/assets/3a916f39-decc-45ac-956a-24e54119ca42" /># Golden Donate Cash
 
 Dashboard web untuk memantau donasi cash (Saweria, Bagi-Bagi, Sociabuzz) dari
 game Roblox, dengan login Discord, multi-workspace per owner, dan panel admin
@@ -116,3 +116,5 @@ Bagi-Bagi dan Sociabuzz belum ada di asset WX_SAWERIA versi ini (cuma
 Saweria) — begitu kamu punya sistem serupa buat provider itu, kirim
 script-nya dan kita sesuaikan endpoint webhook-nya (masih pakai
 `/api/webhook/[provider]/[token]` yang generik).
+Deploy trigger.
+
