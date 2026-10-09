@@ -3,10 +3,11 @@ import DiscordProvider from "next-auth/providers/discord";
 
 export const authOptions = {
   providers: [
-    DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    }),
+DiscordProvider({
+  clientId: process.env.DISCORD_CLIENT_ID,
+  clientSecret: process.env.DISCORD_CLIENT_SECRET,
+  issuer: "https://discord.com",
+}),
   ],
   callbacks: {
     // Simpan Discord user id ke dalam session, dipakai buat cek super owner
