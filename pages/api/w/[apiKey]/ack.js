@@ -1,7 +1,9 @@
 import { prisma } from "../../../../lib/prisma";
 
-// Dipanggil oleh script "WX SAWERIA" setelah efek donasi selesai ditampilkan.
+// Dipanggil oleh script Roblox setelah efek donasi selesai ditampilkan.
 // Body: { items: [{ id, leaseToken, status: "done" | "failed", error }] }
+const MAX_RETRY_AGE_MS = 10 * 60 * 1000; // lewat 10 menit & masih gagal -> berhenti dicoba
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
@@ -13,23 +15,34 @@ export default async function handler(req, res) {
     return res.status(401).json({ ok: false, error: "invalid_api_key" });
   }
 
-  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 50) : [];
 
   for (const item of items) {
-    const donation = await prisma.donation.findUnique({ where: { id: item.id } });
-    if (!donation || donation.workspaceId !== workspace.id) continue;
+    try {
+      if (!item || typeof item.id !== "string") continue;
 
-    if (item.status === "done") {
-      await prisma.donation.update({
-        where: { id: item.id },
-        data: { status: "claimed", claimedAt: new Date(), leaseToken: null, leaseExpiresAt: null },
+      const donation = await prisma.donation.findFirst({
+        where: { id: item.id, workspaceId: workspace.id },
       });
-    } else if (donation.leaseToken === item.leaseToken) {
-      // gagal: lepas lease supaya donasi ini di-pull lagi di siklus berikutnya
-      await prisma.donation.update({
-        where: { id: item.id },
-        data: { leaseToken: null, leaseExpiresAt: null },
-      });
+      if (!donation) continue;
+
+      if (item.status === "done") {
+        if (donation.status === "claimed") continue; // sudah di-ack sebelumnya
+        await prisma.donation.update({
+          where: { id: donation.id },
+          data: { status: "claimed", claimedAt: new Date(), leaseToken: null, leaseExpiresAt: null },
+        });
+      } else if (donation.status === "pending" && donation.leaseToken === item.leaseToken) {
+        const tooOld = Date.now() - donation.createdAt.getTime() > MAX_RETRY_AGE_MS;
+        await prisma.donation.update({
+          where: { id: donation.id },
+          data: tooOld
+            ? { status: "failed", leaseToken: null, leaseExpiresAt: null } // berhenti mencoba
+            : { leaseToken: null, leaseExpiresAt: null }, // antre lagi
+        });
+      }
+    } catch (err) {
+      console.error("ack item error:", err);
     }
   }
 
