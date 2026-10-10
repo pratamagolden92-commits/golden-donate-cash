@@ -6,7 +6,7 @@ const genLease = customAlphabet(
   20
 );
 
-// Dipanggil oleh script "WX SAWERIA" (Script di ServerScriptService) via
+// Dipanggil oleh script "Golden SAWERIA" (Script di ServerScriptService) via
 // Config.Connection.WorkerBaseUrl + Config.Connection.PullPath
 //
 // Body: { serverId, limit }
@@ -44,10 +44,14 @@ export default async function handler(req, res) {
   const items = [];
   for (const d of available) {
     const leaseToken = genLease();
-    await prisma.donation.update({
-      where: { id: d.id },
+
+    // Klaim atomik: hanya berhasil kalau donasi masih pending & belum dipegang server lain
+    const claimed = await prisma.donation.updateMany({
+      where: { id: d.id, status: "pending", leaseToken: null },
       data: { leaseToken, leaseExpiresAt: new Date(Date.now() + 60_000) },
     });
+    if (claimed.count !== 1) continue; // sudah diambil server lain
+
     items.push({
       id: d.id,
       leaseToken,
