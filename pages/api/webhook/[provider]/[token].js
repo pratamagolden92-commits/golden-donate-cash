@@ -1,17 +1,33 @@
 import { prisma } from "../../../../lib/prisma";
 
-// URL ini yang ditempel di pengaturan webhook Saweria/Bagi-Bagi/Sociabuzz:
-// https://domain-lo.com/api/webhook/saweria/<webhookToken>
+// Webhook generik untuk provider selain Saweria (Bagi-Bagi, Sociabuzz).
+// URL: https://golden-donate-cash.vercel.app/api/webhook/<provider>/<webhookToken>
 //
-// CATATAN: body parsing di bawah ini format GENERIK (donor, amount, message).
-// Nanti pas script Saweria/Bagi-Bagi asli lo dikirim, kita sesuaikan bagian
-// "ambil data dari body" di bawah supaya cocok sama payload asli tiap provider.
+// PERHATIAN: jalur ini TIDAK memverifikasi signature, hanya mengandalkan
+// webhookToken di URL. Anggap token itu rahasia. Saweria sengaja diblokir di sini
+// dan harus lewat /api/w/<APIKEY>/saweria yang memverifikasi signature.
+
+function clean(value, fallback, max) {
+  const text = String(value ?? "")
+    .replace(/[\u0000-\u001f]/g, " ")
+    .trim()
+    .slice(0, max);
+  return text || fallback;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
   const { provider, token } = req.query;
+
+  if (provider === "saweria") {
+    return res.status(410).json({
+      error: "use_signed_saweria_endpoint",
+      hint: "/api/w/<APIKEY>/saweria",
+    });
+  }
 
   const providerRow = await prisma.provider.findUnique({
     where: { webhookToken: token },
@@ -24,26 +40,32 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "provider_disabled" });
   }
 
-  // --- Sesuaikan bagian ini dengan payload asli tiap provider nanti ---
-  const donorName = req.body.donor_name || req.body.supporter_name || "Anonim";
-  const amount = Number(req.body.amount || req.body.amount_raw || 0);
-  const message = req.body.message || req.body.comment || null;
-  // ---------------------------------------------------------------
+  const body = req.body || {};
 
-  if (!amount || amount <= 0) {
+  // --- Sesuaikan bagian ini dengan payload asli tiap provider ---
+  const donorName = clean(body.donor_name || body.supporter_name, "Anonim", 60);
+  const message = clean(body.message || body.comment, "", 500) || null;
+  const amount = Math.floor(Number(body.amount || body.amount_raw || 0));
+  // -------------------------------------------------------------
+
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
     return res.status(400).json({ error: "invalid_amount" });
   }
 
-  const donation = await prisma.donation.create({
-    data: {
-      donorName,
-      amount,
-      message,
-      provider,
-      status: "pending",
-      workspaceId: providerRow.workspaceId,
-    },
-  });
-
-  return res.status(200).json({ ok: true, donationId: donation.id });
+  try {
+    const donation = await prisma.donation.create({
+      data: {
+        donorName,
+        amount,
+        message,
+        provider,
+        status: "pending",
+        workspaceId: providerRow.workspaceId,
+      },
+    });
+    return res.status(200).json({ ok: true, donationId: donation.id });
+  } catch (err) {
+    console.error("webhook error:", err);
+    return res.status(500).json({ error: "server_error" });
+  }
 }
