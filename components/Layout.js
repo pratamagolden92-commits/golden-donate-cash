@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 const NAV = [
   { href: "/dashboard", label: "Ringkasan" },
@@ -12,19 +13,18 @@ const NAV = [
 
 export default function Layout({ children, active, isSuperOwner }) {
   const { data: session } = useSession();
+  const [confirmOut, setConfirmOut] = useState(false);
+  const items = isSuperOwner ? [...NAV, { href: "/admin", label: "Admin" }] : NAV;
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <header className="topbar">
         <div className="brand">
           <div className="brand-mark" />
-          <div className="brand-name">
-            Golden Donate Cash
-            <span>GOLDEN STUDIO</span>
-          </div>
+          <span className="brand-name">GOLDEN DONATE</span>
         </div>
-        <nav>
-          {NAV.map((item) => (
+        <nav className="topnav">
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -33,33 +33,39 @@ export default function Layout({ children, active, isSuperOwner }) {
               {item.label}
             </Link>
           ))}
-          {isSuperOwner && (
-            <>
-              <div className="nav-section-label">SUPER OWNER</div>
-              <Link
-                href="/admin"
-                className={"nav-item" + (active === "/admin" ? " active" : "")}
-              >
-                Panel Admin
-              </Link>
-            </>
-          )}
         </nav>
-        <div className="sidebar-foot">
-          <div className="avatar">
-            {session?.user?.image ? (
-              <img src={session.user.image} alt="" />
-            ) : (
-              session?.user?.name?.[0] || "?"
-            )}
+        <div className="who">
+          <div className="who-pill">
+            <div className="avatar">
+              {session?.user?.image ? (
+                <img src={session.user.image} alt="" />
+              ) : (
+                session?.user?.name?.[0] || "?"
+              )}
+            </div>
+            <span className="who-name">{session?.user?.name || "..."}</span>
           </div>
-          <div>
-            <span className="sf-name">{session?.user?.name || "..."}</span>
-            <span className="sf-role">Golden Studio</span>
+          <button className="btn danger small" onClick={() => setConfirmOut(true)}>
+            Keluar
+          </button>
+        </div>
+      </header>
+      <main>{children}</main>
+
+      {confirmOut && (
+        <div className="overlay" onClick={() => setConfirmOut(false)}>
+          <div className="panel" onClick={(e) => e.stopPropagation()}>
+            <div className="panel-title">Keluar dari akun?</div>
+            <p className="key-hint" style={{ marginBottom: 20 }}>
+              Kamu perlu masuk lagi untuk membuka dashboard.
+            </p>
+            <div className="btn-row" style={{ justifyContent: "center" }}>
+              <button className="btn ghost" onClick={() => setConfirmOut(false)}>Batal</button>
+              <button className="btn danger" onClick={() => signOut({ callbackUrl: "/login" })}>Keluar</button>
+            </div>
           </div>
         </div>
-      </aside>
-      <main>{children}</main>
+      )}
     </div>
   );
 }
