@@ -31,6 +31,7 @@ model Workspace {
   owner      User      @relation(fields: [ownerId], references: [id])
   providers  Provider[]
   donations  Donation[]
+  boardConfig BoardConfig?
   createdAt  DateTime  @default(now())
 }
 
@@ -60,4 +61,18 @@ model Donation {
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   createdAt   DateTime  @default(now())
   claimedAt   DateTime?
+}
+
+// Koneksi Roblox Open Cloud untuk Board donatur (satu per workspace).
+// apiKeyEnc = API key Open Cloud yang dienkripsi (AES-256-GCM) dengan BOARD_SECRET_KEY.
+model BoardConfig {
+  id            String    @id @default(cuid())
+  workspaceId   String    @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  universeId    String
+  topStoreName  String
+  nameStoreName String?
+  apiKeyEnc     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
