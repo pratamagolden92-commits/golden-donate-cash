@@ -32,6 +32,8 @@ model Workspace {
   providers  Provider[]
   donations  Donation[]
   boardConfig BoardConfig?
+  settings    WorkspaceSettings?
+
   createdAt  DateTime  @default(now())
 }
 
