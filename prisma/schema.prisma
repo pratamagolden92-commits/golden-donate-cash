@@ -78,3 +78,15 @@ model BoardConfig {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+// Pengaturan efek dan notifikasi per workspace, diatur dari website dan dibaca oleh server game.
+// data = JSON yang sudah divalidasi (lihat lib/settings.js). version naik setiap kali disimpan.
+model WorkspaceSettings {
+  id          String    @id @default(cuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  data        Json
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
