@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 const NAV = [
   { href: "/dashboard", label: "Ringkasan" },
   { href: "/dashboard/donasi", label: "Donasi" },
+  { href: "/dashboard/pengaturan", label: "Pengaturan" },
   { href: "/dashboard/provider", label: "Provider" },
   { href: "/dashboard/api-key", label: "API Key" },
   { href: "/dashboard/donasi-palsu", label: "Donasi Palsu" },
